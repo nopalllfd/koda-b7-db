@@ -31,7 +31,8 @@ INSERT INTO transactions (
 -- Update transaction status
 UPDATE transactions
 SET status = 'success'
-WHERE id = 1;
+WHERE id = 1
+AND status = 'pending';
 
 -- Deduct sender balance
 UPDATE wallets

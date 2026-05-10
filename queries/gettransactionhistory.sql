@@ -25,6 +25,6 @@ JOIN profiles receiver_profile
 WHERE (
     sender_wallet.user_id = 1
     OR receiver_wallet.user_id = 1
-)
+) 
 
 ORDER BY t.created_at DESC;
