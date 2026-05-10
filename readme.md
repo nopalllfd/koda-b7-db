@@ -3,62 +3,77 @@
 ![erd ewallet](ewallet-erd.png)
 
 ```sql
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    full_name VARCHAR(100),
-    password VARCHAR(255) NOT NULL,
-    pin VARCHAR(255),
-    photo VARCHAR(255),
-    phone VARCHAR(20) UNIQUE,
-    balance NUMERIC(15,2) DEFAULT 0,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP
-);
+Table users {
+  id int [pk, increment]
 
-CREATE TABLE payment_methods (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE,
-    logo VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP
-);
+  email varchar(100) [not null, unique]
+  password varchar(255) [not null]
+  pin varchar(255)
 
-CREATE TABLE transactions (
-    id SERIAL PRIMARY KEY,
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+}
 
-    sender_id INT,
-    receiver_id INT,
+Table profiles {
+  user_id int [not null, unique]
 
-    type VARCHAR(20) NOT NULL,
+  full_name varchar(100)
+  photo varchar(255)
+  phone varchar(20) [unique]
+}
 
-    amount NUMERIC(15,2) NOT NULL,
-    tax_amount NUMERIC(15,2) DEFAULT 0,
-    admin_fee NUMERIC(15,2) DEFAULT 0,
-    discount_amount NUMERIC(15,2) DEFAULT 0,
+Table wallets {
+  id int [pk, increment]
 
-    total NUMERIC(15,2) NOT NULL,
+  user_id int [not null, unique]
 
-    method_id INT,
+  balance numeric(15,2) [default: 0]
 
-    reference_code VARCHAR(50) NOT NULL UNIQUE,
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+}
 
-    status VARCHAR(20) DEFAULT 'pending',
+Table payment_methods {
+  id int [pk, increment]
 
-    description TEXT,
+  name varchar(50) [not null, unique]
+  logo varchar(255) [not null]
 
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP,
+  created_at timestamp [default: `now()`]
+}
 
-    CONSTRAINT fk_sender
-        FOREIGN KEY (sender_id)
-        REFERENCES users(id),
+Table transactions {
+  id int [pk, increment]
 
-    CONSTRAINT fk_receiver
-        FOREIGN KEY (receiver_id)
-        REFERENCES users(id),
+  sender_wallet_id int
+  receiver_wallet_id int
 
-    CONSTRAINT fk_payment_method
-        FOREIGN KEY (method_id)
-        REFERENCES payment_methods(id)
-);
+  type varchar(20) [not null]
+
+  amount numeric(15,2) [not null]
+  tax_amount numeric(15,2) [default: 0]
+  admin_fee numeric(15,2) [default: 0]
+  discount_amount numeric(15,2) [default: 0]
+
+  total numeric(15,2) [not null]
+
+  method_id int
+
+  reference_code varchar(50) [not null, unique]
+
+  status varchar(20) [default: 'pending']
+
+  description text
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+}
+
+Ref: profiles.user_id - users.id
+Ref: wallets.user_id - users.id
+
+Ref: transactions.sender_wallet_id > wallets.id
+Ref: transactions.receiver_wallet_id > wallets.id
+
+Ref: transactions.method_id > payment_methods.id
 ```
