@@ -4,7 +4,8 @@ SELECT
     t.reference_code, 
     t.status,
     t.created_at,
-
+    sender_wallet.user_id AS sender_id,
+    receiver_wallet.user_id AS receiver_id,
     sender_profile.full_name AS sender_name, 
     receiver_profile.full_name AS receiver_name
 
@@ -26,5 +27,7 @@ WHERE (
     sender_wallet.user_id = 1
     OR receiver_wallet.user_id = 1
 ) 
+--AND t.type = 'transfer'
 
 ORDER BY t.created_at DESC;
+

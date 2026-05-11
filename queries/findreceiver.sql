@@ -1,7 +1,7 @@
 SELECT
     p.full_name,
     p.phone,
-    u.email
+    p.photo
 FROM users u
 JOIN profiles p
     ON p.user_id = u.id

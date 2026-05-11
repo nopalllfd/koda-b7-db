@@ -23,7 +23,7 @@ INSERT INTO transactions (
     103500,
     1,
     'TRX-0003',
-    'success',
+    'pending',
     'Transfer via BRI',
     NOW()
 );
