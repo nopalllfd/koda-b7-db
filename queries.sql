@@ -1,168 +1,297 @@
 -- Login
 SELECT
-    id,
-    email,
-    password,
-    full_name,
-    photo,
-    balance
-FROM users
-WHERE email = 'john@example.com';
-
-SELECT
-    id,
-    email,
-    full_name,
-    photo,
-    balance
-FROM users
-WHERE email = '' AND password = '';
+    u.id,
+    u.password
+FROM users u
+WHERE u.email = 'nopal@gmail.com';
 
 -- Register
-INSERT INTO users (email, password) VALUES ('nopal@gmail.com', '123456');
+INSERT INTO users (
+    email,
+    password
+) VALUES (
+    'nopal@gmail.com',
+    '123456'
+);
 
--- Get user login information(username, email, photo)
+-- Create profile
+INSERT INTO profiles (
+    user_id
+) VALUES (
+    1
+);
+
+-- Create wallet
+INSERT INTO wallets (
+    user_id
+) VALUES (
+    1
+);
+
+-- Get user login information
 SELECT
-  full_name,
-  email,
-  photo
-FROM users
-WHERE id = 1;
+    p.full_name,
+    u.email,
+    p.photo
+FROM users u
+JOIN profiles p
+    ON p.user_id = u.id
+WHERE u.id = 1;
 
 -- Get user PIN
-SELECT pin FROM users
+SELECT
+    pin
+FROM users
 WHERE id = 1;
 
 -- Get transaction history
-SELECT 
-t.type, 
-t.total, 
-t.reference_code, 
-t.status,
-t.created_at,
+SELECT
+    t.id,
+    t.type,
+    t.reference_code,
+    t.status,
+    t.created_at,
 
-sender.full_name AS sender_name, 
-receiver.full_name AS receiver_name
+    tf.amount AS transfer_amount,
+    tp.amount AS topup_amount,
+
+    sender_profile.full_name AS sender_name,
+    receiver_profile.full_name AS receiver_name,
+
+    pm.name AS payment_method
 
 FROM transactions t
-JOIN users sender ON t.sender_id = sender.id
-JOIN users receiver ON t.receiver_id = receiver.id
+
+LEFT JOIN transfers tf
+    ON tf.transaction_id = t.id
+
+LEFT JOIN topups tp
+    ON tp.transaction_id = t.id
+
+LEFT JOIN wallets sender_wallet
+    ON sender_wallet.id = tf.sender_wallet_id
+
+LEFT JOIN wallets receiver_wallet
+    ON receiver_wallet.id = tf.receiver_wallet_id
+
+LEFT JOIN profiles sender_profile
+    ON sender_profile.user_id = sender_wallet.user_id
+
+LEFT JOIN profiles receiver_profile
+    ON receiver_profile.user_id = receiver_wallet.user_id
+
+LEFT JOIN payment_methods pm
+    ON pm.id = tp.method_id
+
+LEFT JOIN wallets topup_wallet
+    ON topup_wallet.id = tp.wallet_id
 
 WHERE (
-  t.sender_id = 1 
-OR t.receiver_id = 1
-) 
--- AND t.type = 'transfer'
+    sender_wallet.user_id = 1
+    OR receiver_wallet.user_id = 1
+    OR topup_wallet.user_id = 1
+)
 
 ORDER BY t.created_at DESC;
 
--- Get user history with option(income/expense, date range)
+-- Get transaction history option
 -- Income
-SELECT type, total, method_id, reference_code, status
-FROM transactions
-WHERE receiver_id = 2
-AND created_at BETWEEN '2026-03-01'
-AND '2026-05-11'
-ORDER BY created_at DESC;
+SELECT
+    w.user_id,
+    t.type,
+    t.reference_code,
+    t.status,
+    t.created_at,
+
+    tf.amount,
+    tf.total
+
+FROM transactions t
+
+LEFT JOIN transfers tf
+    ON tf.transaction_id = t.id
+LEFT JOIN topups tp
+    ON tp.transaction_id = t.id
+JOIN wallets w
+    ON w.id = tf.receiver_wallet_id
+
+WHERE w.user_id = 1
+
+AND t.created_at BETWEEN '2026-03-01'
+AND '2026-05-14'
+
+ORDER BY t.created_at DESC;
+
 
 -- Expense
-SELECT type, total, method_id, reference_code, status, created_at
-FROM transactions
-WHERE sender_id = 1
-AND type = 'transfer'
-AND created_at BETWEEN '2026-05-01'
-AND '2026-05-11'
-ORDER BY created_at DESC;
+SELECT
+    w.user_id,
 
--- Get user account information (balance, income, expense)
-SELECT 
-u.balance,
+    t.type,
+    t.reference_code,
+    t.status,
+    t.created_at,
 
-(
-  SELECT COALESCE(SUM(amount), 0)
-  FROM transactions
-  WHERE receiver_id = 1
-  AND status = 'success'
-) AS income,
+    tf.amount,
+    tf.total
 
-(
-  SELECT COALESCE(SUM(amount), 0)
-  FROM transactions
-  WHERE sender_id = 1
-  AND status = 'success'
-) AS expense
+FROM transactions t
 
-FROM users u
-WHERE id = 1;
+JOIN transfers tf
+    ON tf.transaction_id = t.id
+
+JOIN wallets w
+    ON w.id = tf.sender_wallet_id
+
+WHERE w.user_id = 1
+
+AND t.created_at BETWEEN '2026-05-01'
+AND '2026-05-14'
+
+ORDER BY t.created_at DESC;
+
+-- Get user account information
+SELECT
+    w.balance,
+
+    (
+        SELECT COALESCE(SUM(tf.amount), 0)
+
+        FROM transfers tf
+
+        JOIN transactions t
+            ON t.id = tf.transaction_id
+
+        WHERE tf.receiver_wallet_id = w.id
+        AND t.status = 'success'
+
+    ) AS income,
+
+    (
+        SELECT COALESCE(SUM(tf.amount), 0)
+
+        FROM transfers tf
+
+        JOIN transactions t
+            ON t.id = tf.transaction_id
+
+        WHERE tf.sender_wallet_id = w.id
+        AND t.status = 'success'
+
+    ) AS expense
+
+FROM wallets w
+WHERE w.user_id = 1;
 
 -- Find receiver with pagination
-SELECT full_name, phone, email
-FROM users
+SELECT
+    p.full_name,
+    p.phone,
+    u.email
+
+FROM users u
+
+JOIN profiles p
+    ON p.user_id = u.id
+
 WHERE (
-  full_name ILIKE '%nopl%' 
-  OR phone ILIKE '%0232%'
+    p.full_name ILIKE '%nopl%'
+    OR p.phone ILIKE '%0232%'
 )
-AND id != 1
+
+AND u.id != 1
+
 LIMIT 10 OFFSET 0;
 
--- Create trx/topup
+-- Create transfer transaction
 INSERT INTO transactions (
-  sender_id,
-  receiver_id,
-  type,
-  amount,
-  tax_amount,
-  admin_fee,
-  discount_amount,
-  total,
-  method_id,
-  reference_code,
-  status,
-  description,
-  created_at
+    type,
+    reference_code,
+    status,
+    created_at
 ) VALUES (
-  2,
-  1,
-  'transfer',
-  100000,
-  1000,
-  2500,
-  0,
-  103500,
-  1,
-  'TRX-0003',
-  'success',
-  'Transfer via BRI',
-  NOW()
+    'transfer',
+    'TRX-0003',
+    'success',
+    NOW()
 );
 
-UPDATE transactions
-SET status = 'success';
+-- Create transfer detail
+INSERT INTO transfers (
+    transaction_id,
+    sender_wallet_id,
+    receiver_wallet_id,
+    amount,
+    tax_amount,
+    admin_fee,
+    discount_amount,
+    total,
+    description
+) VALUES (
+    1,
+    2,
+    1,
+    100000,
+    1000,
+    2500,
+    0,
+    103500,
+    'Transfer via BRI'
+);
 
-UPDATE users
-SET balance = balance - 103500
+-- Update transaction status
+UPDATE transactions
+SET
+    status = 'success',
+    updated_at = NOW()
+WHERE id = 1;
+
+-- Deduct sender balance
+UPDATE wallets
+SET
+    balance = balance - 103500,
+    updated_at = NOW()
 WHERE id = 2;
 
-UPDATE users
-SET balance = balance + 40000
+-- Add receiver balance
+UPDATE wallets
+SET
+    balance = balance + 100000,
+    updated_at = NOW()
 WHERE id = 1;
 
 -- Get user profile
-SELECT photo, full_name, phone, email
-FROM users
-WHERE id = 6;
+SELECT
+    p.photo,
+    p.full_name,
+    p.phone,
+    u.email
+
+FROM users u
+
+JOIN profiles p
+    ON p.user_id = u.id
+
+WHERE u.id = 6;
 
 -- Change pin
 UPDATE users
-SET pin = '1111', updated_at = NOW()
+SET
+    pin = '1111',
+    updated_at = NOW()
 WHERE id = 6;
 
 -- Change password
 UPDATE users
-SET password = '', updated_at = NOW()
+SET
+    password = '',
+    updated_at = NOW()
 WHERE id = 3;
 
 -- Change user profile
-UPDATE users
-SET full_name = 'nopal', phone = '213123', photo = 'ppp', updated_at = NOW()
-WHERE id = 6;
+UPDATE profiles
+SET
+    full_name = 'nopal',
+    phone = '213123',
+    photo = 'ppp'
+WHERE user_id = 6;
