@@ -151,31 +151,43 @@ AND '2026-05-14'
 ORDER BY t.created_at DESC;
 
 -- Get user account information
+
 SELECT
     w.balance,
-
     (
-        SELECT COALESCE(SUM(tf.amount), 0)
+        SELECT SUM(tf.amount)
 
         FROM transfers tf
 
         JOIN transactions t
             ON t.id = tf.transaction_id
-
-        WHERE tf.receiver_wallet_id = w.id
+        WHERE tf.receiver_wallet_id = 1
         AND t.status = 'success'
 
-    ) AS income,
+    ) +
+     (
+        SELECT SUM(tp.amount)
+
+        FROM topups tp
+
+        JOIN transactions t
+            ON t.id = tp.transaction_id
+        WHERE tp.wallet_id = 1
+        AND t.status = 'success'
+
+    )
+
+    AS income,
 
     (
-        SELECT COALESCE(SUM(tf.amount), 0)
+        SELECT SUM(tf.amount)
 
         FROM transfers tf
 
         JOIN transactions t
             ON t.id = tf.transaction_id
 
-        WHERE tf.sender_wallet_id = w.id
+        WHERE tf.sender_wallet_id = 1
         AND t.status = 'success'
 
     ) AS expense
@@ -243,20 +255,6 @@ INSERT INTO transfers (
 UPDATE transactions
 SET
     status = 'success',
-    updated_at = NOW()
-WHERE id = 1;
-
--- Deduct sender balance
-UPDATE wallets
-SET
-    balance = balance - 103500,
-    updated_at = NOW()
-WHERE id = 2;
-
--- Add receiver balance
-UPDATE wallets
-SET
-    balance = balance + 100000,
     updated_at = NOW()
 WHERE id = 1;
 
